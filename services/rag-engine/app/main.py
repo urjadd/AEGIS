@@ -4,6 +4,7 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from app.core.config import settings
+import pymupdf
 
 app = FastAPI(title="rag-engine")
 @app.get("/health")
@@ -16,7 +17,9 @@ def ready():
 
 @app.post("/ingest")
 async def ingest(file: UploadFile = File(...)):
-    return {"status": "ingested", "filename": file.filename}
+    doc = pymupdf.open(stream = await file.read(), filetype = "pdf")
+    all_text ="\n".join( page.get_text() for page in doc)
+    return {"status": "ingested", "filename": file.filename, 'text': all_text}
 
 @app.post("/query")
 async def query(question: str):
