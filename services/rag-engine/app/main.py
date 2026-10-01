@@ -5,6 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from app.core.config import settings
 import pymupdf
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 app = FastAPI(title="rag-engine")
 @app.get("/health")
@@ -19,7 +20,18 @@ def ready():
 async def ingest(file: UploadFile = File(...)):
     doc = pymupdf.open(stream = await file.read(), filetype = "pdf")
     all_text ="\n".join( page.get_text() for page in doc)
-    return {"status": "ingested", "filename": file.filename, 'text': all_text}
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size = 512,
+        chunk_overlap = 50,
+        length_function = len
+    )
+
+    texts = text_splitter.split_text(all_text)
+    return {"status": "ingested", 
+            "filename": file.filename, 
+            "chunk_count": len(texts),
+            'chuncks': texts}
 
 @app.post("/query")
 async def query(question: str):
